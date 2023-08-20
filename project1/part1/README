@@ -1,0 +1,29 @@
+compile with the current directory inside your CLASSPATH:
+javac Calculator.java
+
+run:
+java Calculator test-input
+
+clean:
+rm -f *.class *~
+
+Grammar:
+0. S → expr
+1. expr → term expr0
+2. expr0 → ^ term expr0 
+3. expr0 → ε
+4. term → term0 expr1
+5. expr1 → & term0 expr1
+6. expr1 → ε
+7. term0 → (expr)
+8. term0 → num
+
+Lookahead table:
+
+       |       $       |           ^          |            &            |            (           |        )      |         num
+S      |               |                      |                         |       S → expr $       |               |      S → expr $
+expr   |               |                      |                         |   expr → term expr0    |               |   expr → term expr0
+expr0  |   expr0 → ε   | expr0 → ^ term expr0 |                         |                        |   expr0 → ε	 |
+term   |               |                      |                         |   term → term0 expr1   |               |   term → term0 expr1
+expr1  |   expr1 → ε   |      expr1 → ε       |  expr1 → & term0 expr1  |                        |   expr1 → ε	 |
+term0  |               |                      |                         |    term0 → ( expr )    |               |     term0 → num

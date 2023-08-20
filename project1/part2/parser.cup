@@ -1,0 +1,124 @@
+/* Simple +/-/* expression language; parser evaluates constant expressions on the fly*/
+/**
+ *  Package and Import Specifications
+ */
+import java_cup.runtime.*;
+import java.util.*;
+import java.io.*;
+
+/**
+ *  Usercode Components
+ */
+parser code {:
+    // Connect this parser to a scanner!
+    Scanner s;
+    Parser(Scanner s){ this.s=s; }
+
+    public static void print(String s)
+    {
+            System.out.println(s);
+    }
+    
+    public static String is_blank_parameter(String s)
+    {
+        if(s.equals("") == false)
+        {
+            s = "String " + s;
+        } 
+        return s;
+    }
+
+    public String make_condition(String prefix, String expression, String block1, String block2)  
+    {
+        String ifc = "if (" + expression + ".startsWith(" + prefix + ")" + ") {\n";
+        
+        String if_block = "\t\t" + block1;
+        String elsec = "\t\t}\n\t\t" + "else {\n";
+        
+        String else_block = "\t\t" + block2 + "\t\t}\n";
+
+        return ifc + if_block + elsec + else_block;
+    } 
+
+:}
+
+/* define how to connect to the scanner! */
+scan with {: return s.next_token(); :};
+
+/**
+ *  Symbol Lists
+ */
+
+/* Terminals (tokens returned by the scanner). */
+terminal            PLUS, LPAREN, RPAREN, LBRACKET, RBRACKET, COMMA, RL, IF, ELSE, PREFIX, REVERSE;
+terminal String     STRING_LITERAL, IDENTIFIER;        
+
+/*  Non terminals */
+non terminal            program;
+non terminal String     expr_list, functions;
+non terminal String     function_dec, codeblock, condition;
+non terminal String     function_call, expr, arguments, parameters, might_blank_expr, str;
+
+
+/**
+ *  Precedence Declarations
+ */
+precedence left PLUS; 
+
+/**
+ *  The Grammar Rules
+ */
+
+program ::= functions:f expr_list:main                
+            {:
+            print("public class Main {");
+            print("\tpublic static void main(String args[]) {");
+            print(main);
+            print("\t}");
+            print(f);
+            print("}\n");
+            :}                            
+          ;
+
+expr_list ::= expr_list:e1 expr:e {: RESULT = e1 + "\t\tSystem.out.println(" + e + ");\n"; :}
+            | expr:e              {: RESULT = "\t\tSystem.out.println(" + e + ");\n";      :}
+            ;
+
+function_call ::= IDENTIFIER:foo LPAREN arguments:a RPAREN   {: RESULT = foo + "(" + a + ")"; :}
+                ;
+
+arguments ::= might_blank_expr:e                       {: RESULT = e; :}
+            | might_blank_expr:e COMMA arguments:a     {: RESULT = e + ", " + a; :}
+            ;                 
+
+functions ::= functions:rest function_dec:fd   {: RESULT = rest + "\n" + fd; :} 
+            |                                  {: RESULT = "";               :}
+            ;
+
+function_dec ::= IDENTIFIER:foo LPAREN parameters:p RL codeblock:c RBRACKET {: RESULT = "\tpublic static String " + foo + "(" + p + ") {\n\t\t" + c + "\t}\n"; :}
+               ;
+
+parameters ::= might_blank_expr:e                      {: RESULT = is_blank_parameter(e);            :}
+             | might_blank_expr:e COMMA parameters:p   {: RESULT = is_blank_parameter(e) + ", " + p; :}
+             ;
+
+codeblock ::= condition:c                                                {: RESULT = c; :}
+            | expr:e                                                     {: RESULT = "return " + e + ";\n"; :}
+            ;
+
+condition ::= IF LPAREN expr:e1 PREFIX expr:e2 RPAREN codeblock:c1 ELSE codeblock:c2     {: RESULT = make_condition(e1, e2, c1, c2); :}
+            ;
+
+might_blank_expr ::= expr:e          {: RESULT = e;  :}
+                   |                 {: RESULT = ""; :}
+                   ;                  
+
+expr ::= expr:e1 PLUS expr:e2        {: RESULT = e1 + " + " + e2; :}
+       | str:s                       {: RESULT = s; :}
+       ;
+
+str ::=  REVERSE str:s               {: RESULT = "((new StringBuffer(" + s + ")).reverse().toString())"; :}
+       | function_call:fc            {: RESULT = fc;              :}
+       | STRING_LITERAL:sl           {: RESULT = "\"" + sl + "\""; :}
+       | IDENTIFIER:i                {: RESULT = i;               :}                              
+       ;
